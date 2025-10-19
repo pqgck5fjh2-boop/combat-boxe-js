@@ -1,6 +1,6 @@
 'use strict'
 
-// On définit les deux combattants 
+// Les deux combattants avec techniques utilisant bonus
 const combattants = [
   {
     id: 1,
@@ -12,10 +12,10 @@ const combattants = [
       vitesse: 180
     },
     techniques: [ 
-      { nom: "Smash", puissance: 1300 },
-      { nom: "Uppercut", puissance: 1330 },
-      { nom: "Gazelle Punch", puissance: 1320 },
-      { nom: "Dempsey Roll", puissance: 1350 }
+      { nom: "Smash", bonus: 0 },
+      { nom: "Uppercut", bonus: 30 },
+      { nom: "Gazelle Punch", bonus: 20 },
+      { nom: "Dempsey Roll", bonus: 50 }
     ]
   },
   {
@@ -28,41 +28,40 @@ const combattants = [
       vitesse: 190
     },
     techniques: [ 
-      { nom: "Jab", puissance: 1250 },
-      { nom: "Uppercut", puissance: 1270 },
-      { nom: "Crochet", puissance: 1265 },
-      { nom: "Enchaînement", puissance: 1280 }
+      { nom: "Jab", bonus: 0 },
+      { nom: "Uppercut", bonus: 20 },
+      { nom: "Crochet", bonus: 15 },
+      { nom: "Enchaînement", bonus: 30, combo: 2 } // 2 coups
     ]
   }
 ];
 
-// Fonction pour une technique aléatoire  
+// Fonction pour choisir une technique aléatoire
 function choisirTechniqueAleatoire(techniques) {
   const index = Math.floor(Math.random() * techniques.length);
   return techniques[index];
 }
 
-// Fonction pour  un KO 
+// Coup critique avec 10% de chance
 function coupCritique() {
   return Math.random() < 0.1;
 }
 
-// Fonction  les dégâts infligés 
+// Calcul des dégâts
 function calculerDegats(puissanceAttaque, defenseAdverse) {
   return Math.max(0, puissanceAttaque - (defenseAdverse / 10));
 }
 
-// On récupère Ippo et le joueur depuis la liste des combattants
-let ippo = { ...combattants[0] };
-let joueur = { ...combattants[1] };
+// On clone les combattants pour éviter de modifier les originaux
+let ippo = JSON.parse(JSON.stringify(combattants[0]));
+let joueur = JSON.parse(JSON.stringify(combattants[1]));
 
-// La boucle principale du combat : maximum 10 rounds
+// Début du combat (10 rounds max)
 for (let round = 1; round <= 10; round++) {
-  console.log(`\nRound ${round} `);
+  console.log(`\nRound ${round}`);
 
-  // On détermine qui attaque  en premier selon la vitesse
-  let premier;
-  let second;
+  // Qui attaque en premier ? (vitesse)
+  let premier, second;
   if (joueur.caracteristiques.vitesse > ippo.caracteristiques.vitesse) {
     premier = joueur;
     second = ippo;
@@ -71,50 +70,56 @@ for (let round = 1; round <= 10; round++) {
     second = joueur;
   }
 
-  // Chacun  attaque à son tour
+  // Chaque combattant attaque à son tour
   for (let attaquant of [premier, second]) {
-    // On détermine  le défenseur
     let defenseur = attaquant === ippo ? joueur : ippo;
 
-    // Choix de la technique aléatoire et  voir si il y'a coup critique ou pas  
     const technique = choisirTechniqueAleatoire(attaquant.techniques);
     const critique = coupCritique();
 
-    // Affichage de l’attaque
-    console.log(`${attaquant.nom} utilise ${technique.nom}${critique ? " (COUP CRITIQUE)" : ""} !`);
+    console.log(`${attaquant.nom} utilise ${technique.nom}${critique ? " (COUP CRITIQUE)" : ""}`);
 
-    // Si le coup  est critique alors KO immédiat
+    // Coup critique => KO instantané
     if (critique) {
-      console.log(`${defenseur.nom} est mis KO `);
-      console.log(`${attaquant.nom} remporte le combat `);
+      console.log(`${defenseur.nom} est mis KO`);
+      console.log(`${attaquant.nom} remporte le combat`);
       return;
     }
 
-    // Calcul des dégâts et retrait de l’endurance
-    const degats = calculerDegats(technique.puissance, defenseur.caracteristiques.defense);
-    defenseur.caracteristiques.endurance = defenseurn.caracteristiques.endurance-degats;
+    // Calcul de la puissance de l’attaque
+    const forceBase = attaquant.caracteristiques.force;
+    const puissance = forceBase + technique.bonus;
+    const nombreCoups = technique.combo || 1;
 
-    // Affiche les dégâts subis
-    console.log(`${defenseur.nom} perd ${degats.toFixed(2)} points d’endurance. Endurance restante : ${defenseur.caracteristiques.endurance.toFixed(2)}`);
+    let degatsTotal = 0;
+    for (let i = 0; i < nombreCoups; i++) {
+      degatsTotal += calculerDegats(puissance, defenseur.caracteristiques.defense);
+    }
 
-    // Si le défenseur tombe à 0 alors  fin du combat
+    // Déduire les dégâts de l’endurance
+    defenseur.caracteristiques.endurance -= degatsTotal;
+
+    // Affichage des dégâts
+    console.log(`${defenseur.nom} perd ${degatsTotal.toFixed(2)} points d’endurance. Endurance restante : ${defenseur.caracteristiques.endurance.toFixed(2)}`);
+
+    // Si le défenseur est à 0 il est KO
     if (defenseur.caracteristiques.endurance <= 0) {
-      console.log(`${defenseur.nom} n’a plus de force `);
-      console.log(`${attaquant.nom} remporte le combat `);
+      console.log(`${defenseur.nom} n’a plus de force`);
+      console.log(`${attaquant.nom} remporte le combat`);
       return;
     }
   }
 }
 
-// Si les 10 rounds sont passés 
-console.log("\n Fin des 10 rounds !");
+// Si on atteint le 10e round
+console.log("\nFin des 10 rounds");
 console.log(`Endurance finale - ${joueur.nom}: ${joueur.caracteristiques.endurance.toFixed(2)} | ${ippo.nom}: ${ippo.caracteristiques.endurance.toFixed(2)}`);
 
-// On affiche le gagnant en fonction de l’endurance restante
+// Déterminer le vainqueur aux points
 if (joueur.caracteristiques.endurance > ippo.caracteristiques.endurance) {
-  console.log(`${joueur.nom} remporte le combat aux points `);
+  console.log(`${joueur.nom} remporte le combat aux points`);
 } else if (ippo.caracteristiques.endurance > joueur.caracteristiques.endurance) {
-  console.log(`${ippo.nom} remporte le combat aux points `);
+  console.log(`${ippo.nom} remporte le combat aux points`);
 } else {
   console.log("Égalité parfaite");
 }
